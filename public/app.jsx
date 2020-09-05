@@ -138,7 +138,7 @@ class Game extends React.Component {
             const originalNumRows = Math.ceil(numCards / originalNumCols);
             let numRows = originalNumRows;
             let numCols = originalNumCols;
-            while (numRows === originalNumRows) {
+            while (numRows === originalNumRows || numRows < 3) {
                 numCols-- ;
                 numRows = Math.ceil(numCards / numCols);
             };
