@@ -4,11 +4,34 @@ import { StatusBar } from './statusBar';
 import { Hints } from './hint';
 import { PlayerList, SpectatorList } from './player';
 import { HostControls } from './hostControls';
-import { AvatarSaver } from './avatar';
+import { AvatarSaver } from './saveAvatar';
 import { InitUserArgs, RoomState, PlayerState } from '../common/messages';
 import { makeId } from '../common/utils'
 import { SocketContext, DataContext } from './gameContext';
+import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
+import { getTheme } from './theme'
 import './global';
+
+const GlobalStyle = createGlobalStyle`
+  body {
+        margin: 0;
+        -webkit-user-drag: none;
+        color: ${({theme}) => theme.color};
+        background: ${({theme}) => theme.background};
+  }
+`
+
+const GameBoard = styled.div`
+    justify-content: space-around;
+    height: 100%;
+    user-select: none;
+`
+
+const Kicked = styled.div`
+    text-align: center;
+    padding: 20px;
+    font-size: 18px;
+`
 
 class Game extends Component<{}, GameCompState> {
 
@@ -123,17 +146,15 @@ class Game extends Component<{}, GameCompState> {
 
     render() {
         if ('disconnected' in this.state && this.state.disconnected) {
-            return (<div className="kicked">
-                Disconnected{this.state.disconnectReason ? ` (${this.state.disconnectReason})` : ""}
-            </div>);
+            const { disconnectReason: reason } = this.state;
+            const message = 'Disconnected' + (reason) ? ` (${reason})` : "";
+            return <Kicked>{message}</Kicked>;
         } else if (this.state.inited) {
-            const { master, userId, teamsLocked, inited, timed } = this.state;
-            const isMaster = master === userId;
             const Socket = SocketContext.Provider;
             const Data = DataContext.Provider;
             return (
-                <div className={cs("game", {timed})}>
-                    <div className={cs("game-board", { active: inited, isMaster, teamsLocked })}>
+                <ThemeProvider theme={getTheme()}>
+                    <GameBoard>
                         <Socket value={this.socket}>
                             <Data value={this.state}>
                                 <SpectatorList/>
@@ -145,8 +166,9 @@ class Game extends Component<{}, GameCompState> {
                             </Data>
                         </Socket>
                         {window.CommonRoom && <CommonRoom state={this.state} app={this}/>}
-                    </div>
-                </div>
+                    </GameBoard>
+                    <GlobalStyle/>
+                </ThemeProvider>
             );
         } else {
             return (<div/>);

@@ -1,8 +1,38 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { SetParamType } from "../common/messages";
 import { t } from "./translation_ru";
 import { useDebouncedCallback } from 'use-debounce';
 import { SocketContext, DataContext } from './gameContext';
+import * as material, { Settings, StyledIconBase } from '@styled-icons/material';
+import styled from 'styled-components';
+import useHover from '@react-hook/hover';
+
+const StyledValue = styled.span`
+    vertical-align: middle;
+    padding: 4.5px 0;
+    padding-right: 27px;
+    display: inline-block;
+`
+
+const StyledSettingInput = styled.input`
+    width: 39px;
+    background: transparent;
+    border: 1px solid;
+    color: ${(theme) => theme.color};
+    padding: 2px;
+    margin: 3px;
+`
+
+const InputIconWrapper = styled.div`
+    ${StyledIconBase} {
+        vertical-align: middle;
+        margin-right: 2px;
+    }
+`
+
+const InputContainer = styled.div`
+    display: inline;
+`
 
 type GameSettingType = {
     param: SetParamType,
@@ -13,19 +43,17 @@ type GameSettingType = {
 }
 
 const gameSettings: GameSettingType[] = [
-    { param: 'playerTime', label: 'player time', icon: 'alarm', min: 0},
-    { param: 'teamTime', label: 'team time', icon: 'alarm', min: 0},
-    { param: 'masterTime', label: 'master time', icon: 'alarm_on', min: 0},
-    { param: 'revealTime', label: 'reveal time', icon: 'alarm_on', min: 0},
-    { param: 'wordsLevel', label: 'words level', icon: 'school', min: 1, max: 4},
+    { param: 'playerTime', label: 'player time', icon: 'Alarm', min: 0},
+    { param: 'teamTime', label: 'team time', icon: 'Alarm', min: 0},
+    { param: 'masterTime', label: 'master time', icon: 'AlarmOn', min: 0},
+    { param: 'revealTime', label: 'reveal time', icon: 'AlarmOn', min: 0},
+    { param: 'wordsLevel', label: 'words level', icon: 'School', min: 1, max: 4},
     { param: 'goal', label: 'goal', icon: 'flag', min: 1}
 ];
 
 const SettingInput = ({ param, label, icon, min, max }: GameSettingType) => {
     const data = useContext(DataContext);
     const socket = useContext(SocketContext);
-    //generate className from label e.g. "set-player-time"
-    const className = ['set', ...label.split(' ')].join('-');
     const { hostId, userId, phase, paused } = data;
     const isHost = hostId === userId;
     const inProcess = phase !== 0 && !paused;
@@ -37,15 +65,13 @@ const SettingInput = ({ param, label, icon, min, max }: GameSettingType) => {
             socket.emit("set-param", param, newVal);
         }
     }, 100);
+    const InputIcon = material[icon];
 
     return (
-        <div className={className}>
-            <i title={t(label)} className="material-icons">
-                {icon}
-            </i>
+        <InputContainer>
+            <InputIcon title={t(label)} />
             {(editable) ? (
-                <input
-                    id={className}
+                <StyledSettingInput
                     type="number"
                     defaultValue={value}
                     min={min}
@@ -53,26 +79,40 @@ const SettingInput = ({ param, label, icon, min, max }: GameSettingType) => {
                     onChange={evt => update(evt.target.valueAsNumber)}
                 />
             ) : (
-                <span className="value">
+                <StyledValue>
                     {value}
-                </span>
+                </StyledValue>
             )}
-        </div>
+        </InputContainer>
     )
 }
 
+const StyledGameSettings = styled.div`
+    text-align: left;
+    border-bottom: 1px solid;
+    padding-bottom: 6px;
+    height: 25px;
+    margin-bottom: 9px;
+`
+
 const GameSettings = () => (
-    <div className="host-controls-menu">
-        <div className="little-controls">
-            <div className="game-settings">
-                {gameSettings.map((setting) => (
-                    <SettingInput {...setting} />
-                ))}
-            </div>
-        </div>
-    </div>
+    <StyledGameSettings>
+        <InputIconWrapper>
+            {gameSettings.map((setting) => <SettingInput {...setting} />)}
+        </InputIconWrapper>
+    </StyledGameSettings>
 )
 
+const SideStyleWrapper = styled.div`
+    ${StyledIconBase} {
+        margin-right: 2px;
+        cursor: pointer;
+
+        &:hover {
+            background: ${({theme}) => theme.settingHoverBg}
+        }
+    }
+`
 
 type HostControlsProps = { refreshState: () => void };
 
@@ -89,24 +129,24 @@ const SideButtons = ( {refreshState }: HostControlsProps ) => {
     const buttons: ButtonProps[] = [];
     if (isHost) {
         buttons.push({
-            icon: 'store',
+            icon: 'Store',
             onClick: () => socket.emit("set-room-mode", false)
         });
         buttons.push({
-            icon: (inProcess) ? 'pause' : 'play_arrow',
+            icon: (inProcess) ? 'Pause' : 'PlayArrow',
             onClick: () => socket.emit("toggle-pause")
         });
         if (paused) {
             buttons.push({
-                icon: (teamsLocked) ? 'lock_outline' : 'lock_open',
+                icon: (teamsLocked) ? 'LockOutline' : 'LockOpen',
                 onClick: () => socket.emit("toggle-lock")
             });
             buttons.push({
-                icon: (timed) ? 'alarm' : 'alarm_off',
+                icon: (timed) ? 'Alarm' : 'AlarmOff',
                 onClick: () => socket.emit("toggle-timed")
             });
             buttons.push({
-                icon: 'sync',
+                icon: 'Sync',
                 onClick: () => popup.confirm(
                     {content: "Restart? Are you sure?"},
                     (evt) => evt.proceed && socket.emit("restart")
@@ -126,7 +166,7 @@ const SideButtons = ( {refreshState }: HostControlsProps ) => {
         }
     })
     buttons.push({
-        icon: 'edit',
+        icon: 'Edit',
         onClick: changeName
     });
 
@@ -135,7 +175,7 @@ const SideButtons = ( {refreshState }: HostControlsProps ) => {
         refreshState();
     };
     buttons.push({
-        icon: (parseInt(localStorage.muteSounds)) ? 'volume_off' : 'volume_up', 
+        icon: (parseInt(localStorage.muteSounds)) ? 'VolumeOff' : 'VolumeUp', 
         onClick: toggleMuteSounds
     });
 
@@ -145,33 +185,69 @@ const SideButtons = ( {refreshState }: HostControlsProps ) => {
         refreshState();
     };
     buttons.push({
-        icon: (parseInt(localStorage.darkThemeDixit)) ? 'wb_sunny' : 'brightness_2', 
+        icon: (parseInt(localStorage.darkThemeDixit)) ? 'WbSunny' : 'Brightness2', 
         onClick: toggleTheme
     });
 
     return (
-        <div className="side-buttons">
-            {buttons.map(({onClick, icon}) => (
-                <i onClick={onClick} className="material-icons settings-button">
-                    {icon}
-                </i>
-            ))}
-        </div>
+        <SideStyleWrapper>
+            {buttons.map(({onClick, icon}) => {
+                const SideIcon = material[icon];
+                retrn (
+                    <SideIcon onClick={onClick} />
+                )
+            })}
+        </SideStyleWrapper>
     )
 }
 
+const StyledHostControls = styled.div`
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    padding: 6px;
+    background: ${({theme}) => theme.overlayBg};
+    user-select: none;
+    cursor: default;
+    text-align: right;
+    z-index: 1;
+    box-shadow: 0 0 4px 1px ${({theme}) => theme.shadowColor};
+`
+
+const StyledSettings = styled(Settings)`
+    padding: 2px;
+`
+
+const HoverSettings = (props) => {
+    const target = React.useRef(null);
+    const isHovering = useHover(target, {enterDelay: 200, leaveDelay: 200});
+    return (
+        <StyledHostControls ref={target}>
+            {isHovering && props.children}
+            <StyledSettings />
+        </StyledHostControls>
+    )
+}
+
+const TapSettins = (props) => {
+    const [show, setShow] = useState(false);
+    return (
+        <StyledHostControls onTouchStart={() => setShow(!show)}>
+            {show && props.children}
+            <StyledSettings />
+        </StyledHostControls>
+    )
+}
+
+//TODO: check on Androids and iPhones
 export const HostControls = ( { refreshState }: HostControlsProps) => {
     const { timed } = useContext(DataContext);
+    const canHover = window.matchMedia('(hover: none)').matches;
+    const Container = (canHover) ? HoverSettings : TapSettings;
     return (
-        <div
-            className="host-controls"
-            onTouchStart={(e) => (e.target as HTMLElement).focus()}
-        >
+        <Container>
             {timed && <GameSettings />}
             <SideButtons refreshState={refreshState} />
-            <i className="settings-hover-button material-icons">
-                settings
-            </i>
-        </div>
-    )
+        </Container>
+    );
 }

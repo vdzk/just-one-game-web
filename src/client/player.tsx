@@ -52,17 +52,79 @@ const PlayerHostControls = ({ id }: UserProps) => {
     )
 }
 
+const getPlayerShadowColor = ({theme, isReady=false, isMaster=false}) => {
+    if (isMaster) {
+        return 'cyan';
+    } else if (isReady) {
+        return '#7ace5a';
+    } else {
+        return theme.shadowColor;
+    }
+};
+
+const getPlayerColor = ({isOffline=false, isMaster=false}) => {
+    if (isOffline) {
+        return '#adadad';
+    } else if (isMaster) {
+        return '#00bdbd';
+    } else {
+        return 'inherit';
+    }
+}
+
+const StyledPlayer = styled.div`
+    white-space: nowrap;
+    user-select: none;
+    display: inline-flex;
+    margin: 6px 1px;
+    filter: drop-shadow(0px 0px 2px ${getPlayerShadowColor});
+    color: ${getPlayerColor};
+`
+
+const StyledPlayerInner = styled.div`
+    height: 32px;
+    overflow: hidden;
+    clip-path: polygon(0 0, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%);
+    background: ${({theme}) => theme.playerBg};
+`
+
+const PlayerAvatarSecion = styled.div`
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+    vertical-align: middle;
+`
+
+const PlayerNameSection = styled.div`
+    display: inline-flex;
+    width: 147px;
+    text-align: left;
+    align-items: center;
+    height: 100%;
+    vertical-align: middle;
+`
+
+const PlayerName = styled.span`
+    overflow: hidden;
+    display: inline-block;
+    margin: 0;
+    padding-left: 6px;
+    text-overflow: ellipsis;
+    text-decoration: ${({textDecoration}) => textDecoration || 'none'};
+`
+
 const Player = ({ id }: UserProps) => {
     const {master, readyPlayers, onlinePlayers, userId, playerNames, playerScores} = useContext(DataContext);
     const isReady = readyPlayers.includes(id);
     const isMaster = id === master;
+    const isOffline = onlinePlayers.incldes(id)
     const self = id === userId;
     const clickSaveAvatar = () => document.getElementById("avatar-input")?.click();
 
     return (
-        <div className={cs("player", {
+        <StyledPlayer  className={cs("player", {
             ready: isReady && !isMaster,
-            offline: !~onlinePlayers.indexOf(id),
+            offline: isOffline,
             self,
             master: isMaster,
         })} onTouchStart={(e) => (e.target as HTMLElement).focus()}>
@@ -96,6 +158,14 @@ const Player = ({ id }: UserProps) => {
     );
 }
 
+const StyledPlayerList = styled.div`
+    text-align: center;
+`
+
+const JoinButton = styled(StyledPlayer)`
+    cursor: pointer;
+`
+
 export const PlayerList = () => {
     const { teamsLocked, players, userId } = useContext(DataContext);
     const isPlayer = players.includes(userId);
@@ -107,67 +177,94 @@ export const PlayerList = () => {
     }
 
     return (
-        <div className="player-list-section">
-            <div className="player-list">
-                {players.map(id => <Player key={id} id={id} />)}
-                {!isPlayer && (
-                    <div
-                        className="player join-button"
-                        onClick={joinPlayersClick}
-                    >
-                        <div className="player-inner">
-                            <div className="player-avatar-section">
-                                <div className="avatar"/>
-                            </div>
-                            <div className="player-name-section">
-                            <span className="player-name">
+        <StyledPlayerList>
+            {players.map(id => <Player key={id} id={id} />)}
+            {!isPlayer && !teamsLocked && (
+                <JoinButton onClick={joinPlayersClick}>
+                    <StyledPlayerInner>
+                        <PlayerAvatarSecion>
+                            <StyledAvatar />
+                        </PlayerAvatarSecion>
+                        <PlayerNameSection>
+                            <PlayerName textDecoration={'underline'}>
                                 {t('Enter')}
-                            </span>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
+                            </PlayerName>
+                        </PlayerNameSection>
+                    </StyledPlayerInner>
+                </JoinButton>
+            )}
+        </StyledPlayerList>
     );
 }
 
+const StyledSpectator = styled.span`
+    font-weight: ${({self}) => (self) ? 'bold' : 'normal'};
+`
+
 const Spectator = ({ id }: UserProps) => {
-    const { playerNames, userId } = useContext(DataContext);
+    const { playerNames, userId, teamsLocked } = useContext(DataContext);
     const self = id === userId;
     return (
-        <span className={cs("spectator", {self})}>
+        <StyledSpectator self={self}>
             &nbsp;●&nbsp;
-            <span className="spectator-name">
+            <span>
                 {playerNames[id]}
             </span>
             &nbsp;
             <PlayerHostControls id={id} />
-        </span>
+        </StyledSpectator>
     )
 }
+
+const SpectatorPlaceholder = styled.div`
+    height: 42px;
+`
+
+const SpectatorsSection = styled.div`
+    text-align: center;
+    position: fixed;
+    right: 0;
+    top: 0;
+    z-index: 2;
+`
+
+const StyledSpectators = styled.div`
+    height: 20px;
+    padding: 4px 6px;
+    cursor: ${({teamsLocked}) => (teamsLocked) ? 'default' : 'pointer' };
+    background: ${({theme}) => theme.overlayBg};
+    user-select: none;
+    white-space: nowrap;
+    margin-left: 5px;
+    line-height: 20px;
+`
 
 export const SpectatorList = () =>  {
     const { teamsLocked, spectators } = useContext(DataContext);
     const socket = useContext(SocketContext);
     const empty = spectators.length === 0;
 
-    const joinSpectatorsClick = (evt: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const spectate = (evt: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
         evt.stopPropagation();
         if (!teamsLocked) socket.emit("spectators-join");
     }
 
-    return (
-        <div className="spectator-placeholder">
-            <div className={cs('spectators-section')}>
-                <div
-                    className={cs("spectators", {empty})}
-                    onClick={joinSpectatorsClick}
-                >
-                    {t('Spectators')}:{empty && ' ...'}
-                    {spectators.map(id => <Spectator key={id} id={id} /> )}
-                </div>
-            </div>
-        </div>
-    )
+    if (empty && teamsLocked) {
+        return null;
+    } else {
+        return (
+            <SpectatorPlaceholder>
+                <SpectatorsSection>
+                    <StyledSpectators
+                        teamsLocked={teamsLocked}
+                        onClick={spectate}
+                    >
+                        {t('Spectators')}:{empty && ' ...'}
+                        {spectators.map(id => <Spectator key={id} id={id} /> )}
+                    </StyledSpectators>
+                </SpectatorsSection>
+            </SpectatorPlaceholder>
+        )
+    }
+
 }
